@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account in SmartCare Cloud with role-based identity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 120, "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" },
+        "role": { "type": "string", "enum": ["patient", "doctor", "admin"] },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "role", "name", "status", "createdAt"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient clinical and demographic profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "age": { "type": "integer" },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "bloodGroup": { "type": "string", "maxLength": 10 },
+        "emergencyContact": { "type": "string", "maxLength": 30 },
+        "medicalHistory": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "age", "gender", "bloodGroup", "createdAt"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "Healthcare provider profile and clinical specialization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "specialization": { "type": "string", "maxLength": 100 },
+        "department": { "type": "string", "maxLength": 100 },
+        "qualification": { "type": "string", "maxLength": 100 },
+        "experienceYears": { "type": "integer" },
+        "availabilityDays": { "type": "string", "maxLength": 100 },
+        "availabilityHours": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "specialization", "department", "createdAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Healthcare appointment booked through SmartCare Cloud",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "patientName": { "type": "string", "maxLength": 100 },
+        "doctorId": { "type": "string", "maxLength": 128 },
+        "doctorName": { "type": "string", "maxLength": 100 },
+        "department": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["confirmed", "completed", "cancelled"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "patientId", "patientName", "doctorId", "doctorName", "department", "date", "time", "status", "createdAt"]
+    },
+    "MedicalRecord": {
+      "title": "MedicalRecord",
+      "description": "Digital clinical record and consultation notes stored in central cloud database",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "recordId": { "type": "string", "maxLength": 50 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "patientName": { "type": "string", "maxLength": 100 },
+        "doctorId": { "type": "string", "maxLength": 128 },
+        "doctorName": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "format": "date" },
+        "recordType": { "type": "string", "maxLength": 50 },
+        "consultationNotes": { "type": "string", "maxLength": 2000 },
+        "prescription": { "type": "string", "maxLength": 1000 },
+        "followUpDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["finalized", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "recordId", "patientId", "doctorId", "date", "recordType", "consultationNotes", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role authentication"
+    },
+    "/patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patient medical demographics and history"
+    },
+    "/doctors/{doctorId}": {
+      "schema": "Doctor",
+      "description": "Doctor directory and credential profiles"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Patient and doctor scheduled clinical visits"
+    },
+    "/medicalRecords/{recordId}": {
+      "schema": "MedicalRecord",
+      "description": "Digital health consultation records and clinical documentation"
+    }
+  }
+}

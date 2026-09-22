@@ -1,0 +1,6 @@
+{
+  "name": "SMARTCARE CLOUD",
+  "description": "Smart Healthcare Management System - Centralised Cloud Platform, Role-Based Access Control, and Digital Medical Records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
