@@ -5,28 +5,29 @@ import { AuthenticatedRequest, requireRole } from '../middleware/auth.js';
 const apiRouter = Router();
 
 // ----------------------------------------------------
-// 1. Auth & Session Routes
+// 1. Auth & Session Routes (Universal Access enabled: Any credentials accepted)
 // ----------------------------------------------------
 apiRouter.post('/auth/login', (req, res) => {
   const { email, password, role } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+
+  // Accept any identifier or fallback to guest
+  let cleanEmail = (typeof email === 'string' ? email : '').trim().toLowerCase();
+  if (!cleanEmail) {
+    cleanEmail = 'guest.user@smartcare.cloud';
+  } else if (!cleanEmail.includes('@')) {
+    cleanEmail = `${cleanEmail.replace(/[^a-z0-9._-]/g, '')}@smartcare.cloud`;
   }
 
-  const user = cloudDb.getUserByEmail(email);
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials. User not found in Cloud Database.' });
-  }
+  // Determine requested or default role
+  const targetRole: 'patient' | 'doctor' | 'admin' =
+    role === 'doctor' || role === 'admin' || role === 'patient' ? role : 'patient';
 
-  if (role && user.role !== role) {
-    return res.status(403).json({
-      error: `Role mismatch: This account is registered as ${user.role.toUpperCase()}, not ${role.toUpperCase()}.`,
-    });
-  }
+  // Ensure user and matching profile records exist dynamically in the cloud database
+  const user = cloudDb.ensureUserWithRole(cleanEmail, targetRole);
 
-  // Generate synthetic academic token
+  // Generate synthetic token
   const token = `user:${user.id}`;
-  cloudDb.logAction('LOGIN_SUCCESS', user.email, user.role, `Authenticated via Cloud Security Gateway`);
+  cloudDb.logAction('LOGIN_SUCCESS_UNIVERSAL', user.email, user.role, `Universal access granted into role ${user.role}`);
 
   return res.json({
     token,
@@ -38,7 +39,7 @@ apiRouter.post('/auth/login', (req, res) => {
       phone: user.phone,
       status: user.status,
     },
-    message: 'Authentication successful. Cloud session established.',
+    message: `Authentication accepted. Welcome, ${user.name}!`,
   });
 });
 

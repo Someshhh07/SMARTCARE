@@ -83,6 +83,87 @@ class CloudDatabaseService {
     return newUser;
   }
 
+  public ensurePatientRecord(user: UserRecord): PatientRecord {
+    let patient = this.getPatientByUserId(user.id);
+    if (!patient) {
+      const id = `pat-${user.id}`;
+      patient = {
+        id,
+        userId: user.id,
+        name: user.name,
+        age: 32,
+        gender: 'Other',
+        bloodGroup: 'O+',
+        emergencyContact: '+91 98450 11223',
+        medicalHistory: 'Regular wellness tracking and consultation.',
+        lastVisit: '2026-09-18',
+        nextAppointment: '2026-10-02',
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+      };
+      this.patients.set(id, patient);
+    }
+    return patient;
+  }
+
+  public ensureDoctorRecord(user: UserRecord): DoctorRecord {
+    let doctor = this.getDoctorByUserId(user.id);
+    if (!doctor) {
+      const id = `doc-${user.id}`;
+      doctor = {
+        id,
+        userId: user.id,
+        name: user.name.startsWith('Dr.') ? user.name : `Dr. ${user.name}`,
+        specialization: user.specialization || 'Internal Medicine & Cloud Care',
+        department: 'General Medicine',
+        qualification: 'MBBS, MD',
+        experienceYears: 10,
+        availabilityDays: 'Mon - Fri',
+        availabilityHours: '09:00 AM - 05:00 PM',
+        consultationFee: 750,
+        rating: 4.9,
+        totalPatients: 120,
+        createdAt: new Date().toISOString(),
+      };
+      this.doctors.set(id, doctor);
+    }
+    return doctor;
+  }
+
+  public ensureUserWithRole(email: string, role: 'patient' | 'doctor' | 'admin' = 'patient', customName?: string): UserRecord {
+    let user = this.getUserByEmail(email);
+    if (!user) {
+      const rawName = customName || email.split('@')[0];
+      const formatted = rawName
+        .split(/[._-]/)
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(' ') || 'Cloud User';
+
+      const finalName = role === 'doctor' && !formatted.startsWith('Dr') ? `Dr. ${formatted}` : formatted;
+
+      user = this.createUser({
+        email,
+        name: finalName,
+        role,
+        phone: '+91 98450 ' + Math.floor(10000 + Math.random() * 90000),
+        status: 'active',
+      });
+    } else {
+      if (role && user.role !== role) {
+        user.role = role;
+      }
+      user.status = 'active';
+    }
+
+    if (user.role === 'patient') {
+      this.ensurePatientRecord(user);
+    } else if (user.role === 'doctor') {
+      this.ensureDoctorRecord(user);
+    }
+
+    return user;
+  }
+
   public updateUserStatus(id: string, status: 'active' | 'inactive'): UserRecord | null {
     const user = this.users.get(id);
     if (!user) return null;

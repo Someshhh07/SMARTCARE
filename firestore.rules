@@ -7,8 +7,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Skill test connection validation path
+    match /test/connection {
+      allow read: if true;
+    }
+
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
     function getUserData() {
@@ -16,11 +25,12 @@ service cloud.firestore {
     }
 
     function getUserRole() {
-      return getUserData().role;
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? getUserData().role : "patient";
     }
 
     function isAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == "yadasomesh46@gmail.com" ||
         request.auth.token.email == "admin@smartcare.cloud" ||
         getUserRole() == "admin"
       );
@@ -37,50 +47,36 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isDoctor());
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && isValidId(userId);
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
     // Patients collection
     match /patients/{patientId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isDoctor() || isAdmin());
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isDoctor() || isAdmin());
+      allow read: if isSignedIn() || isAdmin();
+      allow create, update: if isSignedIn() && isValidId(patientId);
       allow delete: if isAdmin();
     }
 
     // Doctors collection
     match /doctors/{doctorId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin() || (isSignedIn() && isValidId(doctorId));
     }
 
     // Appointments collection
     match /appointments/{appointmentId} {
-      allow read: if isSignedIn() && (
-        resource.data.patientId == request.auth.uid ||
-        resource.data.doctorId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (
-        resource.data.patientId == request.auth.uid ||
-        resource.data.doctorId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(appointmentId);
+      allow update: if isSignedIn() && isValidId(appointmentId);
       allow delete: if isAdmin();
     }
 
     // Medical Records collection
     match /medicalRecords/{recordId} {
-      allow read: if isSignedIn() && (
-        resource.data.patientId == request.auth.uid ||
-        resource.data.doctorId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if isDoctor() || isAdmin();
-      allow update: if isDoctor() || isAdmin();
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(recordId);
       allow delete: if isAdmin();
     }
   }

@@ -27,7 +27,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { login, register, setActiveView } = useAuth();
+  const { login, loginWithGoogle, register, setActiveView, firestoreConnected, firestoreDbId } = useAuth();
   
   // View states: 'login' | 'register' | 'forgot-password'
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
@@ -51,23 +51,14 @@ export const LoginPage: React.FC = () => {
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
 
   // Field validations
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isPasswordValid = password.length >= 6;
+  const isEmailValid = authMode === 'login' ? true : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = authMode === 'login' ? true : password.length >= 6;
   const isNameValid = name.trim().length >= 2;
 
   // Handle role selection
   const handleRoleSelect = (selectedRole: 'patient' | 'doctor' | 'admin') => {
     setRole(selectedRole);
     setErrorMessage(null);
-    if (authMode === 'login') {
-      if (selectedRole === 'patient') {
-        setEmail('aarav.kumar@patient.smartcare.cloud');
-      } else if (selectedRole === 'doctor') {
-        setEmail('dr.priya.rao@doctor.smartcare.cloud');
-      } else if (selectedRole === 'admin') {
-        setEmail('admin@smartcare.cloud');
-      }
-    }
   };
 
   // Switch between Sign In and Registration
@@ -100,30 +91,30 @@ export const LoginPage: React.FC = () => {
     setSuccessMessage(null);
 
     // Validate inputs
-    if (authMode === 'register' && !isNameValid) {
-      setErrorMessage('Please provide your legal full name (minimum 2 characters).');
-      return;
-    }
-    if (!isEmailValid) {
-      setErrorMessage('Please enter a valid business or patient email address.');
-      return;
-    }
-    if (!isPasswordValid) {
-      setErrorMessage('Password must contain at least 6 characters.');
-      return;
+    if (authMode === 'register') {
+      if (!isNameValid) {
+        setErrorMessage('Please provide your legal full name (minimum 2 characters).');
+        return;
+      }
+      if (!email.trim()) {
+        setErrorMessage('Please enter an email or username.');
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
       if (authMode === 'register') {
-        await register(email, name, role, phone || '+91 98450 00000');
+        await register(email.trim(), name, role, phone || '+91 98450 00000');
       } else {
-        await login(email, role);
+        // Universal access: any credentials allowed for any user
+        const targetIdentifier = email.trim() || `${role}@smartcare.cloud`;
+        await login(targetIdentifier, role);
       }
     } catch (err: any) {
       setErrorMessage(
-        err?.message || 'Authentication rejected. Please verify your credentials or permissions.'
+        err?.message || 'Authentication error. Please retry.'
       );
     } finally {
       setLoading(false);
@@ -403,11 +394,18 @@ export const LoginPage: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              {authMode === 'login' && 'Select your role and authenticate into your cloud workspace.'}
+              {authMode === 'login' && 'Universal access enabled — enter any username, email, or password to log in.'}
               {authMode === 'register' && 'Register into the central cloud database with verified role permissions.'}
               {authMode === 'forgot-password' && 'Enter your verified email address to receive password instructions.'}
             </p>
           </div>
+
+          {authMode === 'login' && (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-50/80 border border-teal-200/80 text-[11px] text-teal-900 font-medium">
+              <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+              <span>Universal Access Active: Any credentials or usernames will grant immediate access into your chosen role.</span>
+            </div>
+          )}
 
           {/* Feedback: Error Banner */}
           <AnimatePresence>
@@ -580,30 +578,30 @@ export const LoginPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Email Address Field */}
+              {/* Email Address / Username Field */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Email Address <span className="text-rose-500">*</span>
+                  {authMode === 'login' ? 'Email Address or Username' : 'Email Address'} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <input
-                    type="email"
-                    required
+                    type={authMode === 'login' ? 'text' : 'email'}
+                    required={authMode === 'register'}
                     id="login-email-input"
                     value={email}
                     onBlur={() => setTouched({ ...touched, email: true })}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@smartcare.cloud"
-                    className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white font-medium ${
-                      touched.email && !isEmailValid
-                        ? 'border-rose-400 focus:border-rose-500'
-                        : 'border-slate-200'
-                    }`}
+                    placeholder={authMode === 'login' ? 'e.g. any username, email, or credential' : 'name@smartcare.cloud'}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white font-medium"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 </div>
-                {touched.email && !isEmailValid && (
-                  <p className="text-[11px] text-rose-600 mt-1">Please provide a valid email format.</p>
+                {authMode === 'login' ? (
+                  <p className="text-[11px] text-teal-700 font-medium mt-1">Any credential or username accepted.</p>
+                ) : (
+                  touched.email && !isEmailValid && (
+                    <p className="text-[11px] text-rose-600 mt-1">Please provide a valid email format.</p>
+                  )
                 )}
               </div>
 
@@ -615,14 +613,7 @@ export const LoginPage: React.FC = () => {
                   </label>
                   
                   {authMode === 'login' ? (
-                    <button
-                      type="button"
-                      id="forgot-password-link"
-                      onClick={() => switchToMode('forgot-password')}
-                      className="text-[11px] text-teal-700 hover:text-teal-800 font-semibold hover:underline cursor-pointer"
-                    >
-                      Forgot Password?
-                    </button>
+                    <span className="text-[11px] text-teal-700 font-medium">Any password accepted</span>
                   ) : (
                     <span className="text-[11px] text-slate-400">Min. 6 characters</span>
                   )}
@@ -631,17 +622,13 @@ export const LoginPage: React.FC = () => {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    required
+                    required={authMode === 'register'}
                     id="login-password-input"
                     value={password}
                     onBlur={() => setTouched({ ...touched, password: true })}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white ${
-                      touched.password && !isPasswordValid
-                        ? 'border-rose-400 focus:border-rose-500'
-                        : 'border-slate-200'
-                    }`}
+                    className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white"
                   />
                   <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <button
@@ -653,7 +640,7 @@ export const LoginPage: React.FC = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {touched.password && !isPasswordValid && (
+                {authMode === 'register' && touched.password && !isPasswordValid && (
                   <p className="text-[11px] text-rose-600 mt-1">Password must be at least 6 characters long.</p>
                 )}
               </div>
@@ -677,6 +664,59 @@ export const LoginPage: React.FC = () => {
                   </>
                 )}
               </button>
+
+              {/* Or Google Sign-In Divider */}
+              <div className="relative flex items-center justify-center my-1">
+                <div className="border-t border-slate-200 w-full"></div>
+                <span className="bg-white px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                  Or Sign In With
+                </span>
+                <div className="border-t border-slate-200 w-full"></div>
+              </div>
+
+              {/* Google Sign In with Firebase Auth */}
+              <button
+                type="button"
+                id="google-signin-btn"
+                disabled={loading}
+                onClick={async () => {
+                  try {
+                    await loginWithGoogle(role);
+                  } catch (e) {
+                    // Handled in context toast
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs transition-all duration-150 flex items-center justify-center gap-2.5 shadow-xs cursor-pointer disabled:opacity-60"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>Continue with Google (Firebase)</span>
+              </button>
+
+              {/* Firestore Connected Badge */}
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-teal-50/60 border border-teal-200/60 text-[10px] text-teal-800">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span className="font-semibold">Firestore Enterprise Database</span>
+                </div>
+                <span className="font-mono text-teal-700/80 truncate max-w-[140px]">{firestoreDbId}</span>
+              </div>
             </form>
           )}
 

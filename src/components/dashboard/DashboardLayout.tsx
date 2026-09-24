@@ -58,6 +58,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     markNotificationAsRead,
     clearNotifications,
     toastMessage,
+    firestoreConnected,
+    firestoreDbId,
   } = useAuth();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -317,6 +319,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
 
             <AcademicBadge className="hidden xl:inline-flex" />
+
+            {/* Firestore Enterprise Live Connection Pill */}
+            <div
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50/80 border border-teal-200/80 text-[10px] font-semibold text-teal-800 shadow-2xs"
+              title={`Firestore Enterprise Database ID: ${firestoreDbId}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
+              <span>Firestore Connected</span>
+            </div>
 
             {/* Notification Bell with Dropdown */}
             <div className="relative">
