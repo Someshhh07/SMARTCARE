@@ -674,10 +674,10 @@ export const LoginPage: React.FC = () => {
                 <div className="border-t border-slate-200 w-full"></div>
               </div>
 
-              {/* Google Sign In with Firebase Auth */}
+              {/* Connect with Google */}
               <button
                 type="button"
-                id="google-signin-btn"
+                id="connect-with-google-btn"
                 disabled={loading}
                 onClick={async () => {
                   try {
@@ -706,14 +706,14 @@ export const LoginPage: React.FC = () => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Continue with Google (Firebase)</span>
+                <span>Connect with Google</span>
               </button>
 
               {/* Firestore Connected Badge */}
               <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-teal-50/60 border border-teal-200/60 text-[10px] text-teal-800">
                 <div className="flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
-                  <span className="font-semibold">Firestore Enterprise Database</span>
+                  <span className="font-semibold">Cloud Database</span>
                 </div>
                 <span className="font-mono text-teal-700/80 truncate max-w-[140px]">{firestoreDbId}</span>
               </div>

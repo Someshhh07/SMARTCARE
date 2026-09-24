@@ -53,7 +53,7 @@ export const CloudMonitoringView: React.FC = () => {
             <AcademicBadge />
           </div>
           <p className="text-xs text-slate-500">
-            Real-time status monitoring for Firebase Auth, Firestore Database, and Express Gateway.
+            Real-time status monitoring for Google Cloud Identity, Firestore Database, and Express Gateway.
           </p>
         </div>
 
