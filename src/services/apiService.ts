@@ -1,4 +1,5 @@
 import { User, Patient, Doctor, Appointment, MedicalRecord, CloudMonitoringStatus } from '../types';
+import { FirestoreService } from './firestoreService';
 
 class ApiService {
   private getHeaders(): HeadersInit {
@@ -83,10 +84,27 @@ class ApiService {
 
   // Appointments
   async getAppointments(): Promise<Appointment[]> {
-    const res = await fetch('/api/appointments', { headers: this.getHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch appointments');
-    const data = await res.json();
-    return data.appointments || [];
+    try {
+      const res = await fetch('/api/appointments', { headers: this.getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch appointments');
+      const data = await res.json();
+      const serverAppts: Appointment[] = data.appointments || [];
+
+      // Check if Firestore has additional appointments and merge
+      const fsAppts = await FirestoreService.getAppointments();
+      const existingIds = new Set(serverAppts.map((a) => a.id));
+      const combined = [...serverAppts];
+      for (const fa of fsAppts) {
+        if (!existingIds.has(fa.id)) {
+          combined.unshift(fa);
+          existingIds.add(fa.id);
+        }
+      }
+      return combined;
+    } catch (e) {
+      // Fallback directly to Firestore
+      return FirestoreService.getAppointments();
+    }
   }
 
   async createAppointment(data: {
@@ -108,7 +126,16 @@ class ApiService {
       throw new Error(err.error || 'Failed to book appointment');
     }
     const result = await res.json();
-    return result.appointment;
+    const appt: Appointment = result.appointment;
+
+    // Immediately store to Firebase Firestore
+    try {
+      await FirestoreService.createAppointment(appt);
+    } catch (fsErr) {
+      console.warn('Firestore appointment background store notice:', fsErr);
+    }
+
+    return appt;
   }
 
   async updateAppointmentStatus(id: string, status: 'confirmed' | 'completed' | 'cancelled'): Promise<Appointment> {
@@ -119,15 +146,40 @@ class ApiService {
     });
     if (!res.ok) throw new Error('Failed to update appointment');
     const result = await res.json();
-    return result.appointment;
+    const appt: Appointment = result.appointment;
+
+    // Update in Firebase Firestore
+    try {
+      await FirestoreService.updateAppointmentStatus(id, status);
+    } catch (fsErr) {
+      console.warn('Firestore update appointment status notice:', fsErr);
+    }
+
+    return appt;
   }
 
   // Medical Records
   async getMedicalRecords(): Promise<MedicalRecord[]> {
-    const res = await fetch('/api/medical-records', { headers: this.getHeaders() });
-    if (!res.ok) throw new Error('Failed to fetch medical records');
-    const data = await res.json();
-    return data.records || [];
+    try {
+      const res = await fetch('/api/medical-records', { headers: this.getHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch medical records');
+      const data = await res.json();
+      const serverRecords: MedicalRecord[] = data.records || [];
+
+      // Merge with records from Firestore
+      const fsRecords = await FirestoreService.getMedicalRecords();
+      const existingIds = new Set(serverRecords.map((r) => r.id));
+      const combined = [...serverRecords];
+      for (const fr of fsRecords) {
+        if (!existingIds.has(fr.id)) {
+          combined.unshift(fr);
+          existingIds.add(fr.id);
+        }
+      }
+      return combined;
+    } catch (e) {
+      return FirestoreService.getMedicalRecords();
+    }
   }
 
   async getMedicalRecord(id: string): Promise<MedicalRecord> {
@@ -159,7 +211,16 @@ class ApiService {
       throw new Error(err.error || 'Failed to create medical record');
     }
     const data = await res.json();
-    return data.record;
+    const record: MedicalRecord = data.record;
+
+    // Immediately store to Firebase Firestore
+    try {
+      await FirestoreService.createMedicalRecord(record);
+    } catch (fsErr) {
+      console.warn('Firestore medical record store notice:', fsErr);
+    }
+
+    return record;
   }
 
   // Admin

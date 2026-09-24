@@ -60,6 +60,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     toastMessage,
     firestoreConnected,
     firestoreDbId,
+    syncProjectDataToFirestore,
   } = useAuth();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -320,14 +321,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             <AcademicBadge className="hidden xl:inline-flex" />
 
-            {/* Firestore Enterprise Live Connection Pill */}
-            <div
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50/80 border border-teal-200/80 text-[10px] font-semibold text-teal-800 shadow-2xs"
-              title={`Firestore Enterprise Database ID: ${firestoreDbId}`}
+            {/* Cloud Database Live Connection Pill with Quick Sync */}
+            <button
+              type="button"
+              id="cloud-db-sync-btn"
+              onClick={async () => {
+                await syncProjectDataToFirestore();
+              }}
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50/90 hover:bg-teal-100/90 border border-teal-200 text-[10px] font-semibold text-teal-800 shadow-2xs transition-colors cursor-pointer"
+              title={`Cloud Database: ${firestoreDbId}. Click to sync SmartCare project files.`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span>Firestore Connected</span>
-            </div>
+              <span>Cloud Database Active</span>
+              <span className="text-[9px] bg-teal-200/70 text-teal-900 px-1.5 py-0.5 rounded-md font-mono">Sync</span>
+            </button>
 
             {/* Notification Bell with Dropdown */}
             <div className="relative">

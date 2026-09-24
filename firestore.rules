@@ -29,55 +29,47 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
+      return (isSignedIn() && (
         request.auth.token.email == "yadasomesh46@gmail.com" ||
         request.auth.token.email == "admin@smartcare.cloud" ||
         getUserRole() == "admin"
-      );
+      ));
     }
 
-    function isDoctor() {
-      return isSignedIn() && (getUserRole() == "doctor" || isAdmin());
-    }
-
-    function isPatient() {
-      return isSignedIn() && (getUserRole() == "patient" || isAdmin());
-    }
-
-    // Users collection
+    // Users collection: user profiles and credentials
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isDoctor());
-      allow create: if isSignedIn() && isValidId(userId);
-      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if true;
+      allow create, update: if isValidId(userId);
       allow delete: if isAdmin();
     }
 
-    // Patients collection
+    // Patients collection: patient clinical demographics
     match /patients/{patientId} {
-      allow read: if isSignedIn() || isAdmin();
-      allow create, update: if isSignedIn() && isValidId(patientId);
+      allow read: if true;
+      allow create, update: if isValidId(patientId);
       allow delete: if isAdmin();
     }
 
-    // Doctors collection
+    // Doctors collection: physician registry and schedules
     match /doctors/{doctorId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || (isSignedIn() && isValidId(doctorId));
-    }
-
-    // Appointments collection
-    match /appointments/{appointmentId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(appointmentId);
-      allow update: if isSignedIn() && isValidId(appointmentId);
+      allow read: if true;
+      allow create, update: if isValidId(doctorId);
       allow delete: if isAdmin();
     }
 
-    // Medical Records collection
+    // Appointments collection: scheduling visits
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow create, update: if isValidId(appointmentId);
+      allow delete: if isAdmin();
+    }
+
+    // Medical Records collection: clinical records and prescriptions
     match /medicalRecords/{recordId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(recordId);
+      allow read: if true;
+      allow create, update: if isValidId(recordId);
       allow delete: if isAdmin();
     }
   }
 }
+

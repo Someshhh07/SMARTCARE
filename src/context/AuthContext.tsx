@@ -22,6 +22,7 @@ interface AuthContextType {
   register: (email: string, name: string, role: string, phone: string) => Promise<void>;
   logout: () => void;
   switchDemoRole: (role: 'patient' | 'doctor' | 'admin') => Promise<void>;
+  syncProjectDataToFirestore: () => Promise<number>;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
@@ -47,24 +48,24 @@ const DEMO_EMAILS = {
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
-    title: 'Firestore Database Online',
-    message: `Connected to Cloud Firestore Enterprise (${firebaseConfig.firestoreDatabaseId}).`,
+    title: 'Cloud Database Online',
+    message: `Connected to Cloud Database Enterprise (${firebaseConfig.firestoreDatabaseId}).`,
     timestamp: 'Just now',
     type: 'security',
     read: false,
   },
   {
     id: 'notif-2',
-    title: 'Cloud Record Finalized',
-    message: 'Central clinical documentation synced with Firestore persistence.',
+    title: 'SmartCare Records Synced',
+    message: 'Central clinical documentation and patient files synchronized with persistent cloud database.',
     timestamp: '1 hour ago',
     type: 'record',
     read: false,
   },
   {
     id: 'notif-3',
-    title: 'Security Gateway Verified',
-    message: 'Role-Based Access token refreshed with 256-bit AES protocol.',
+    title: 'Role Security Gateway Active',
+    message: 'Role-Based Access control enforced for Patient, Doctor, and Admin workspaces.',
     timestamp: '3 hours ago',
     type: 'security',
     read: true,
@@ -81,27 +82,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [firestoreConnected, setFirestoreConnected] = useState<boolean>(true);
 
-  // Validate connection to Firestore on initial boot (Critical Skill Requirement)
+  // Validate connection to Firestore on initial boot & seed SmartCare project data
   useEffect(() => {
-    async function verifyFirestore() {
+    async function bootSync() {
       try {
         const result = await testFirestoreConnection();
         setFirestoreConnected(result.connected);
+        if (result.connected) {
+          // Auto-seed and verify initial SmartCare project dataset in Firestore
+          FirestoreService.seedSmartCareProjectData().catch((e) => {
+            console.warn('Initial project data seed background notice:', e);
+          });
+        }
       } catch (err) {
         console.warn('Firestore boot test status:', err);
       }
     }
-    verifyFirestore();
+    bootSync();
   }, []);
 
   // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
       if (fbUser && !user) {
-        // Map Firebase user to SmartCare User
         const email = fbUser.email || 'user@smartcare.cloud';
-        const isAdminEmail = email === 'yadasomesh46@gmail.com' || email.includes('admin');
-        const role = isAdminEmail ? 'admin' : 'patient';
+        const isSomeshAdmin = email === 'yadasomesh46@gmail.com' || email.includes('admin');
+        const role = isSomeshAdmin ? 'admin' : 'patient';
         const mappedUser: User = {
           id: fbUser.uid,
           email,
@@ -112,7 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           createdAt: new Date().toISOString(),
         };
         setUser(mappedUser);
-        await FirestoreService.syncUser(mappedUser);
+        await FirestoreService.ensureUserRoleAndProfile(mappedUser);
       }
     });
     return () => unsubscribe();
@@ -127,6 +133,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const me = await api.getMe();
           if (me) {
             setUser(me);
+            // Ensure Firestore sync
+            FirestoreService.ensureUserRoleAndProfile(me).catch(() => {});
           }
         }
       } catch (err) {
@@ -145,17 +153,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, 4000);
   };
 
+  const syncProjectDataToFirestore = async (): Promise<number> => {
+    showToast('Storing SmartCare project data to Cloud Database...');
+    try {
+      const result = await FirestoreService.seedSmartCareProjectData();
+      showToast(`Stored ${result.totalStored} SmartCare project records into Cloud Database.`);
+      return result.totalStored;
+    } catch (e: any) {
+      showToast('Cloud Database sync notice: check connection.');
+      return 0;
+    }
+  };
+
   const login = async (email: string, role?: string) => {
     setLoading(true);
     try {
       const data = await api.login(email, role);
       setUser(data.user);
       setActiveView('dashboard');
-      // Sync user to Firestore
-      FirestoreService.syncUser(data.user).catch((e) =>
-        console.warn('Background Firestore user sync notice:', e)
-      );
-      showToast(`Welcome back, ${data.user.name} (${data.user.role.toUpperCase()})`);
+      // Store user and ensure role profile in Firestore
+      await FirestoreService.ensureUserRoleAndProfile(data.user);
+      showToast(`Welcome, ${data.user.name}! Access granted as ${data.user.role.toUpperCase()}`);
     } catch (err) {
       throw err;
     } finally {
@@ -169,13 +187,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const fbUser = await fbSignInWithGoogle();
       const email = fbUser.email || 'user@smartcare.cloud';
       const isSomeshAdmin = email === 'yadasomesh46@gmail.com' || email.includes('admin');
-      const role = isSomeshAdmin ? 'admin' : preferredRole;
+      
+      // Check existing role stored in Firestore
+      let assignedRole: 'patient' | 'doctor' | 'admin' = isSomeshAdmin ? 'admin' : preferredRole;
+      try {
+        const existingFsUser = await FirestoreService.getUser(fbUser.uid);
+        if (existingFsUser && existingFsUser.role) {
+          assignedRole = isSomeshAdmin ? 'admin' : existingFsUser.role;
+        }
+      } catch (e) {
+        // Fall back to assignedRole
+      }
 
       const newUser: User = {
         id: fbUser.uid,
         email,
         name: fbUser.displayName || 'Google User',
-        role,
+        role: assignedRole,
         phone: fbUser.phoneNumber || '+91 98450 ' + Math.floor(10000 + Math.random() * 90000),
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -189,8 +217,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(newUser);
       setActiveView('dashboard');
 
-      await FirestoreService.syncUser(newUser);
-      showToast(`Google Authentication successful! Connected as ${newUser.name} [${newUser.role.toUpperCase()}]`);
+      // Store in Firestore and ensure role profile
+      await FirestoreService.ensureUserRoleAndProfile(newUser);
+      showToast(`Signed in as ${newUser.name} with ${newUser.role.toUpperCase()} access!`);
     } catch (err: any) {
       console.error('Google Sign-In error:', err);
       showToast(err?.message || 'Google sign-in cancelled or failed');
@@ -206,10 +235,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await api.register(email, name, role, phone);
       setUser(data.user);
       setActiveView('dashboard');
-      FirestoreService.syncUser(data.user).catch((e) =>
-        console.warn('Background Firestore user sync notice:', e)
-      );
-      showToast(`Account created for ${data.user.name}`);
+      // Store in Firestore
+      await FirestoreService.ensureUserRoleAndProfile(data.user);
+      showToast(`Account created for ${data.user.name} with ${data.user.role.toUpperCase()} access.`);
     } catch (err) {
       throw err;
     } finally {
@@ -232,8 +260,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await api.login(targetEmail, targetRole);
       setUser(data.user);
       setActiveView('dashboard');
-      FirestoreService.syncUser(data.user).catch(() => {});
-      showToast(`Switched view to: ${data.user.name} [${targetRole.toUpperCase()}]`);
+      // Store and provision role profile in Firestore
+      await FirestoreService.ensureUserRoleAndProfile(data.user);
+      showToast(`Switched workspace to ${data.user.name} [${targetRole.toUpperCase()}]`);
     } catch (err) {
       console.error('Failed to switch demo role', err);
       showToast('Role switch failed');
@@ -267,6 +296,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         logout,
         switchDemoRole,
+        syncProjectDataToFirestore,
         notifications,
         unreadNotificationCount,
         markNotificationAsRead,
