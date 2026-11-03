@@ -27,16 +27,44 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { login, loginWithGoogle, register, setActiveView, firestoreConnected, firestoreDbId } = useAuth();
+  const { user, login, loginWithGoogle, register, setActiveView, firestoreConnected, firestoreDbId } = useAuth();
+
+  React.useEffect(() => {
+    if (user) {
+      setActiveView('dashboard');
+    }
+  }, [user, setActiveView]);
   
   // View states: 'login' | 'register' | 'forgot-password'
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
   
+  // Demo credentials per role
+  const DEMO_CREDENTIALS = {
+    patient: {
+      label: 'Patient',
+      name: 'Aarav Kumar',
+      email: 'aarav.kumar@patient.smartcare.cloud',
+      password: 'Patient@123',
+    },
+    doctor: {
+      label: 'Doctor',
+      name: 'Dr. Priya Rao (Cardiology)',
+      email: 'dr.priya.rao@doctor.smartcare.cloud',
+      password: 'Doctor@123',
+    },
+    admin: {
+      label: 'Admin',
+      name: 'Prof. S. R. Varma',
+      email: 'admin@smartcare.cloud',
+      password: 'Admin@123',
+    },
+  };
+
   // Form fields
   const [role, setRole] = useState<'patient' | 'doctor' | 'admin'>('patient');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('aarav.kumar@patient.smartcare.cloud');
-  const [password, setPassword] = useState('secureDemoPass123!');
+  const [email, setEmail] = useState(DEMO_CREDENTIALS.patient.email);
+  const [password, setPassword] = useState(DEMO_CREDENTIALS.patient.password);
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
@@ -59,6 +87,10 @@ export const LoginPage: React.FC = () => {
   const handleRoleSelect = (selectedRole: 'patient' | 'doctor' | 'admin') => {
     setRole(selectedRole);
     setErrorMessage(null);
+    if (authMode === 'login') {
+      setEmail(DEMO_CREDENTIALS[selectedRole].email);
+      setPassword(DEMO_CREDENTIALS[selectedRole].password);
+    }
   };
 
   // Switch between Sign In and Registration
@@ -75,8 +107,8 @@ export const LoginPage: React.FC = () => {
       setPassword('');
     } else if (mode === 'login') {
       if (!email) {
-        setEmail('aarav.kumar@patient.smartcare.cloud');
-        setPassword('secureDemoPass123!');
+        setEmail(DEMO_CREDENTIALS[role].email);
+        setPassword(DEMO_CREDENTIALS[role].password);
       }
     } else if (mode === 'forgot-password') {
       setResetEmail(email || 'aarav.kumar@patient.smartcare.cloud');
@@ -400,13 +432,6 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          {authMode === 'login' && (
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-50/80 border border-teal-200/80 text-[11px] text-teal-900 font-medium">
-              <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
-              <span>Universal Access Active: Any credentials or usernames will grant immediate access into your chosen role.</span>
-            </div>
-          )}
-
           {/* Feedback: Error Banner */}
           <AnimatePresence>
             {errorMessage && (
@@ -680,10 +705,11 @@ export const LoginPage: React.FC = () => {
                 id="connect-with-google-btn"
                 disabled={loading}
                 onClick={async () => {
+                  setErrorMessage(null);
                   try {
                     await loginWithGoogle(role);
-                  } catch (e) {
-                    // Handled in context toast
+                  } catch (e: any) {
+                    setErrorMessage(e?.message || 'Google Sign-in could not complete. You can also sign in with the 1-click Demo credentials below.');
                   }
                 }}
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs transition-all duration-150 flex items-center justify-center gap-2.5 shadow-xs cursor-pointer disabled:opacity-60"
@@ -709,14 +735,67 @@ export const LoginPage: React.FC = () => {
                 <span>Connect with Google</span>
               </button>
 
-              {/* Firestore Connected Badge */}
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-teal-50/60 border border-teal-200/60 text-[10px] text-teal-800">
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
-                  <span className="font-semibold">Cloud Database</span>
+              {/* Demo Credentials Reference Box */}
+              {authMode === 'login' && (
+                <div className="pt-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                        Demo Credentials (Click to Fill)
+                      </span>
+                      <span className="text-[10px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                        1-Click Fill
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {(['patient', 'doctor', 'admin'] as const).map((r) => {
+                        const cred = DEMO_CREDENTIALS[r];
+                        const isSelected = role === r && email === cred.email;
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => handleRoleSelect(r)}
+                            className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-white border-teal-500/50 shadow-2xs ring-1 ring-teal-500/20'
+                                : 'bg-white/70 hover:bg-white border-slate-200/80'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    r === 'patient'
+                                      ? 'bg-teal-100 text-teal-800'
+                                      : r === 'doctor'
+                                      ? 'bg-cyan-100 text-cyan-800'
+                                      : 'bg-indigo-100 text-indigo-800'
+                                  }`}
+                                >
+                                  {cred.label}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800 truncate">
+                                  {cred.name}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] font-mono text-slate-600">
+                                <span className="truncate">{cred.email}</span>
+                                <span className="text-slate-400">•</span>
+                                <span className="text-teal-700 font-semibold">Pass: {cred.password}</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-teal-700 shrink-0 px-2 py-1 rounded-lg bg-teal-50 border border-teal-200/60">
+                              {isSelected ? 'Selected' : 'Use'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <span className="font-mono text-teal-700/80 truncate max-w-[140px]">{firestoreDbId}</span>
-              </div>
+              )}
             </form>
           )}
 

@@ -122,3 +122,16 @@ export interface CloudMonitoringStatus {
   };
   lastHealthCheck: string;
 }
+
+export interface SectionHistoryItem {
+  id: string;
+  title: string;
+  timestamp: string;
+  status: string;
+  badge: string;
+  badgeColor?: 'emerald' | 'teal' | 'cyan' | 'blue' | 'indigo' | 'rose' | 'amber';
+  actor: string;
+  target?: string;
+  details: string;
+  recordRef?: string;
+}

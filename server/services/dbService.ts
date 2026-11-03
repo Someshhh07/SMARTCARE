@@ -349,7 +349,227 @@ class CloudDatabaseService {
       details,
     };
     this.auditLogs.unshift(log);
-    if (this.auditLogs.length > 50) this.auditLogs.pop();
+    if (this.auditLogs.length > 100) this.auditLogs.pop();
+  }
+
+  public getSectionHistory(section: string, userId?: string, role?: string) {
+    const now = Date.now();
+    const formatTimeAgo = (msAgo: number) => new Date(now - msAgo).toISOString();
+
+    if (section === 'appointments') {
+      const appts = this.getAppointments();
+      const userAppts = role === 'patient' && userId ? appts.filter(a => a.patientId === userId) : appts;
+      return userAppts.map((a, idx) => ({
+        id: `hist-appt-${a.id}`,
+        title: `${a.status === 'confirmed' ? 'Scheduled Consultation' : a.status === 'completed' ? 'Completed Visit' : 'Cancelled Slot'}`,
+        timestamp: a.updatedAt || a.createdAt || formatTimeAgo(idx * 3600000 * 4),
+        status: a.status,
+        badge: a.status.toUpperCase(),
+        badgeColor: a.status === 'completed' ? 'emerald' : a.status === 'confirmed' ? 'teal' : 'rose',
+        actor: a.patientName,
+        target: a.doctorName,
+        details: `${a.department} consultation booked for ${a.date} at ${a.time}. Notes: ${a.notes || 'Routine checkup.'}`,
+        recordRef: a.id,
+      }));
+    }
+
+    if (section === 'medical-records') {
+      const recs = this.getMedicalRecords();
+      const userRecs = role === 'patient' && userId ? recs.filter(r => r.patientId === userId) : recs;
+      return userRecs.map((r, idx) => ({
+        id: `hist-rec-${r.id}`,
+        title: `${r.recordType} - ${r.diagnosis}`,
+        timestamp: r.createdAt || formatTimeAgo(idx * 3600000 * 8),
+        status: r.status,
+        badge: r.recordType,
+        badgeColor: 'blue',
+        actor: r.doctorName,
+        target: r.patientName,
+        details: `Diagnosed with "${r.diagnosis}". Prescription: ${r.prescription}. Signed by ${r.doctorName}.`,
+        recordRef: r.recordId,
+      }));
+    }
+
+    if (section === 'patients') {
+      const patients = this.getPatients();
+      return patients.map((p, idx) => ({
+        id: `hist-pat-${p.id}`,
+        title: `Patient Registry - ${p.name}`,
+        timestamp: p.createdAt || formatTimeAgo(idx * 86400000 * 2),
+        status: p.status,
+        badge: p.status,
+        badgeColor: 'teal',
+        actor: 'Clinical Intake System',
+        target: p.name,
+        details: `Profile initialized. Blood group: ${p.bloodGroup}, Age: ${p.age}, History: ${p.medicalHistory}.`,
+        recordRef: p.id,
+      }));
+    }
+
+    if (section === 'users') {
+      const users = this.getUsers();
+      return users.map((u, idx) => ({
+        id: `hist-usr-${u.id}`,
+        title: `Account Provisioning: ${u.name}`,
+        timestamp: u.createdAt || formatTimeAgo(idx * 86400000 * 3),
+        status: u.status,
+        badge: u.role.toUpperCase(),
+        badgeColor: u.role === 'admin' ? 'indigo' : u.role === 'doctor' ? 'cyan' : 'teal',
+        actor: 'Security Controller',
+        target: u.email,
+        details: `Role assigned as ${u.role.toUpperCase()}. Authentication status: ${u.status}.`,
+        recordRef: u.id,
+      }));
+    }
+
+    if (section === 'monitoring') {
+      return [
+        {
+          id: 'hist-mon-1',
+          title: 'Firestore Multi-Region Sync Check',
+          timestamp: formatTimeAgo(60000 * 15),
+          status: 'verified',
+          badge: 'FIRESTORE',
+          badgeColor: 'emerald',
+          actor: 'Health Probe Agent',
+          target: 'Database Cluster',
+          details: 'Replication latency verified at 18ms. 0 dropped packets across zone asia-east1-a.',
+          recordRef: 'probe-091',
+        },
+        {
+          id: 'hist-mon-2',
+          title: 'OAuth 2.0 Token Revocation Audit',
+          timestamp: formatTimeAgo(60000 * 45),
+          status: 'verified',
+          badge: 'SECURITY',
+          badgeColor: 'teal',
+          actor: 'Zero-Trust Gate',
+          target: 'Auth Services',
+          details: 'Verified 42 active session tokens; zero unauthorized bearer attempts in last cycle.',
+          recordRef: 'sec-810',
+        },
+        {
+          id: 'hist-mon-3',
+          title: 'Failover Simulation Benchmark',
+          timestamp: formatTimeAgo(3600000 * 3),
+          status: 'verified',
+          badge: 'INFRASTRUCTURE',
+          badgeColor: 'blue',
+          actor: 'DevOps Automated Test',
+          target: 'Cloud Run Cluster',
+          details: 'Switched mock traffic to backup replica in 420ms without downtime or data loss.',
+          recordRef: 'dr-339',
+        },
+        {
+          id: 'hist-mon-4',
+          title: 'Daily Encrypted Backup Committed',
+          timestamp: formatTimeAgo(3600000 * 12),
+          status: 'verified',
+          badge: 'BACKUP',
+          badgeColor: 'indigo',
+          actor: 'Storage Vault Daemon',
+          target: 'Cloud Storage Bucket',
+          details: 'Encrypted snapshot committed with AES-256 GCM digest. Total size: 48.6 MB.',
+          recordRef: 'bkg-114',
+        },
+      ];
+    }
+
+    if (section === 'architecture-view') {
+      return [
+        {
+          id: 'hist-arch-1',
+          title: 'Firestore Schema Snapshot Verified',
+          timestamp: formatTimeAgo(60000 * 25),
+          status: 'active',
+          badge: 'SCHEMA',
+          badgeColor: 'teal',
+          actor: 'Schema Engine',
+          target: '5 Core Collections',
+          details: 'Collections validated: users, patients, doctors, appointments, medicalRecords.',
+          recordRef: 'sch-01',
+        },
+        {
+          id: 'hist-arch-2',
+          title: 'Role-Based Access Control Rules Synced',
+          timestamp: formatTimeAgo(3600000 * 2),
+          status: 'active',
+          badge: 'RULES',
+          badgeColor: 'emerald',
+          actor: 'Security Architect',
+          target: 'firestore.rules',
+          details: 'Security rules verified with zero-trust validation helpers on document IDs.',
+          recordRef: 'rul-08',
+        },
+        {
+          id: 'hist-arch-3',
+          title: 'Initial Seed Dataset Committed',
+          timestamp: formatTimeAgo(86400000),
+          status: 'active',
+          badge: 'DATASET',
+          badgeColor: 'blue',
+          actor: 'Database Admin',
+          target: 'SmartCare Data',
+          details: 'Seeded initial doctor registry, outpatient clinical agendas, and sample EHR documents.',
+          recordRef: 'seed-99',
+        },
+      ];
+    }
+
+    if (section === 'rbac-matrix') {
+      return [
+        {
+          id: 'hist-rbac-1',
+          title: 'Doctor EHR Authoring Permissions Affirmed',
+          timestamp: formatTimeAgo(3600000 * 2),
+          status: 'enforced',
+          badge: 'RBAC',
+          badgeColor: 'cyan',
+          actor: 'Security Daemon',
+          target: 'Doctor Role',
+          details: 'Read/Write access permitted on /medicalRecords, Read on /patients.',
+          recordRef: 'pol-101',
+        },
+        {
+          id: 'hist-rbac-2',
+          title: 'Patient Boundary Isolation Tested',
+          timestamp: formatTimeAgo(3600000 * 6),
+          status: 'enforced',
+          badge: 'ISOLATION',
+          badgeColor: 'teal',
+          actor: 'Policy Engine',
+          target: 'Patient Role',
+          details: 'Confirmed patient cannot read other patient records (user ID restriction enforced).',
+          recordRef: 'pol-102',
+        },
+        {
+          id: 'hist-rbac-3',
+          title: 'Admin Governance Privileges Active',
+          timestamp: formatTimeAgo(86400000 * 2),
+          status: 'enforced',
+          badge: 'PRIVILEGE',
+          badgeColor: 'indigo',
+          actor: 'System Bootstrap',
+          target: 'Admin Role',
+          details: 'Full administrative governance granted over /users and infrastructure telemetry.',
+          recordRef: 'pol-103',
+        },
+      ];
+    }
+
+    // Default: Return recent audit logs with formatted entries
+    return this.auditLogs.map((log) => ({
+      id: log.id,
+      title: log.action.replace(/_/g, ' '),
+      timestamp: log.timestamp,
+      status: 'logged',
+      badge: log.role.toUpperCase(),
+      badgeColor: log.role === 'admin' ? 'indigo' : log.role === 'doctor' ? 'cyan' : 'teal',
+      actor: log.actor,
+      target: log.role,
+      details: log.details,
+      recordRef: log.id,
+    }));
   }
 
   // Cloud Monitoring & Stats

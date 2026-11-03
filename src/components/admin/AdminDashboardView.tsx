@@ -29,11 +29,13 @@ import {
   X as CloseIcon,
   Minus,
   KeyRound,
+  History,
 } from 'lucide-react';
 import { User, Patient, Doctor, Appointment, MedicalRecord, CloudMonitoringStatus } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { AcademicBadge } from '../common/AcademicBadge';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 interface AdminDashboardViewProps {
   onNavigate: (nav: string) => void;
@@ -49,6 +51,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onNaviga
   const [monitoring, setMonitoring] = useState<CloudMonitoringStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'daily' | 'weekly'>('daily');
 
   useEffect(() => {
@@ -238,6 +241,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onNaviga
             >
               <Users className="w-3.5 h-3.5 text-cyan-300" />
               <span>User Governance</span>
+            </button>
+            <button
+              id="admin-audit-history-btn"
+              onClick={() => setHistoryOpen(true)}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-xs"
+              title="View immutable system audit logs and administrative trace"
+            >
+              <History className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Audit History</span>
             </button>
           </div>
         </div>
@@ -555,6 +567,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onNaviga
           </table>
         </div>
       </div>
+
+      {/* Admin System Audit History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="dashboard"
+        sectionTitle="System Administration & Immutable Audit Trail"
+      />
     </div>
   );
 };

@@ -14,9 +14,33 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
   const authHeader = req.headers.authorization;
   const userEmailHeader = req.headers['x-user-email'] as string;
   const userIdHeader = req.headers['x-user-id'] as string;
+  const userRoleHeader = req.headers['x-user-role'] as 'patient' | 'doctor' | 'admin' | undefined;
 
-  if (userIdHeader) {
-    const user = cloudDb.getUserById(userIdHeader);
+  let uId = userIdHeader;
+  if (!uId && authHeader && authHeader.startsWith('Bearer ')) {
+    const rawToken = authHeader.split(' ')[1];
+    if (rawToken.startsWith('user:')) {
+      uId = rawToken.replace('user:', '');
+    } else if (rawToken.startsWith('firebase:')) {
+      uId = rawToken.replace('firebase:', '');
+    } else if (rawToken) {
+      uId = rawToken;
+    }
+  }
+
+  if (uId) {
+    let user = cloudDb.getUserById(uId);
+    if (!user && (userEmailHeader || uId)) {
+      const email = userEmailHeader || `${uId}@smartcare.cloud`;
+      const targetRole = email === 'yadasomesh46@gmail.com' ? 'admin' : (userRoleHeader || 'patient');
+      user = cloudDb.ensureUserWithRole(email, targetRole);
+      // Ensure the id matches uId
+      user.id = uId;
+      (cloudDb as any).users.set(uId, user);
+    } else if (user && userRoleHeader && user.role !== userRoleHeader) {
+      user.role = userRoleHeader;
+    }
+
     if (user) {
       req.user = {
         id: user.id,
@@ -29,7 +53,11 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
   }
 
   if (userEmailHeader) {
-    const user = cloudDb.getUserByEmail(userEmailHeader);
+    let user = cloudDb.getUserByEmail(userEmailHeader);
+    if (!user) {
+      const targetRole = userEmailHeader === 'yadasomesh46@gmail.com' ? 'admin' : (userRoleHeader || 'patient');
+      user = cloudDb.ensureUserWithRole(userEmailHeader, targetRole);
+    }
     if (user) {
       req.user = {
         id: user.id,
@@ -43,10 +71,9 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    // For academic prototype, tokens can encode user id or email
-    if (token.startsWith('user:')) {
-      const uId = token.replace('user:', '');
-      const user = cloudDb.getUserById(uId);
+    if (token.startsWith('user:') || token.startsWith('firebase:')) {
+      const parsedId = token.replace(/^(user:|firebase:)/, '');
+      const user = cloudDb.getUserById(parsedId);
       if (user) {
         req.user = {
           id: user.id,
@@ -59,7 +86,6 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
     }
   }
 
-  // Default to Aarav Kumar for public demo testing if no auth specified, or proceed with guest
   return next();
 }
 

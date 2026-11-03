@@ -24,11 +24,13 @@ import {
   FileSignature,
   Eye,
   Lock,
+  History,
 } from 'lucide-react';
 import { Appointment, MedicalRecord, Doctor } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { BookAppointmentModal } from '../appointments/BookAppointmentModal';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 interface PatientDashboardViewProps {
   onNavigate: (nav: string) => void;
@@ -41,6 +43,7 @@ export const PatientDashboardView: React.FC<PatientDashboardViewProps> = ({ onNa
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookModalOpen, setBookModalOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
   useEffect(() => {
@@ -154,6 +157,15 @@ export const PatientDashboardView: React.FC<PatientDashboardViewProps> = ({ onNa
             >
               <FileText className="w-4 h-4 text-teal-300" />
               <span>My Records</span>
+            </button>
+            <button
+              id="patient-health-history-btn"
+              onClick={() => setHistoryOpen(true)}
+              className="px-4.5 py-2.5 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 cursor-pointer backdrop-blur-xs"
+              title="View full patient health timeline and encounter history"
+            >
+              <History className="w-4 h-4 text-teal-300" />
+              <span>Health History</span>
             </button>
           </div>
         </div>
@@ -730,6 +742,14 @@ export const PatientDashboardView: React.FC<PatientDashboardViewProps> = ({ onNa
         onSuccess={() => {
           loadData();
         }}
+      />
+
+      {/* Health History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="dashboard"
+        sectionTitle="Patient Health & Session History"
       />
     </div>
   );

@@ -10,15 +10,18 @@ import {
   Zap,
   ShieldCheck,
   RefreshCw,
+  History,
 } from 'lucide-react';
 import { CloudMonitoringStatus } from '../../types';
 import { api } from '../../services/apiService';
 import { AcademicBadge } from '../common/AcademicBadge';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 export const CloudMonitoringView: React.FC = () => {
   const [monitoring, setMonitoring] = useState<CloudMonitoringStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -57,14 +60,27 @@ export const CloudMonitoringView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh Telemetry</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="cloud-monitoring-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer active:scale-95"
+            title="View infrastructure uptime and latency history"
+          >
+            <History className="w-3.5 h-3.5 text-teal-600" />
+            <span>Telemetry History</span>
+          </button>
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh Telemetry</span>
+          </button>
+        </div>
       </div>
 
       {/* Primary Cloud Services Status (Section 26) */}
@@ -165,6 +181,14 @@ export const CloudMonitoringView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Cloud Monitoring Telemetry History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="monitoring"
+        sectionTitle="Cloud Infrastructure & Health Check History"
+      />
     </div>
   );
 };

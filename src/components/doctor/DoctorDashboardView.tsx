@@ -23,10 +23,12 @@ import {
   HeartPulse,
   Pill,
   Send,
+  History,
 } from 'lucide-react';
 import { Appointment, Patient, MedicalRecord } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 interface DoctorDashboardViewProps {
   onNavigate: (nav: string) => void;
@@ -38,6 +40,7 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({ onNavi
   const [patients, setPatients] = useState<Patient[]>([]);
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // New Consultation Note Modal
   const [consultationModalOpen, setConsultationModalOpen] = useState(false);
@@ -204,6 +207,15 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({ onNavi
             >
               <Users className="w-4 h-4 text-blue-300" />
               <span>Patient Roster</span>
+            </button>
+            <button
+              id="doctor-clinical-history-btn"
+              onClick={() => setHistoryOpen(true)}
+              className="px-4.5 py-2.5 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 cursor-pointer backdrop-blur-xs"
+              title="View clinical encounter and consultation history"
+            >
+              <History className="w-4 h-4 text-cyan-300" />
+              <span>Clinical History</span>
             </button>
           </div>
         </div>
@@ -765,6 +777,14 @@ export const DoctorDashboardView: React.FC<DoctorDashboardViewProps> = ({ onNavi
           </div>
         </div>
       )}
+
+      {/* Doctor Clinical History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="dashboard"
+        sectionTitle="Clinical Practice & Consultation History"
+      />
     </div>
   );
 };

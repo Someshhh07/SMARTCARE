@@ -28,10 +28,12 @@ import {
   Smartphone,
   Database,
   RefreshCw,
+  History,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AcademicBadge } from '../common/AcademicBadge';
 import { PersistentBanner } from '../common/PersistentBanner';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -67,6 +69,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Role metadata for header and sidebar branding
@@ -106,6 +109,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         { id: 'appointments', label: 'Outpatient Agenda', icon: Calendar, category: 'Core Workflow' },
         { id: 'patients', label: 'My Patients', icon: Users, category: 'Clinical Records' },
         { id: 'medical-records', label: 'EHR Documentation', icon: FileText, category: 'Clinical Records' },
+        { id: 'architecture-view', label: 'Cloud Database', icon: Database, category: 'Infrastructure' },
         { id: 'monitoring', label: 'Infrastructure Status', icon: Server, category: 'Operations' },
       ];
     }
@@ -321,19 +325,38 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             <AcademicBadge className="hidden xl:inline-flex" />
 
-            {/* Cloud Database Live Connection Pill with Quick Sync */}
-            <button
-              type="button"
-              id="cloud-db-sync-btn"
-              onClick={async () => {
-                await syncProjectDataToFirestore();
-              }}
+            {/* Cloud Database Live Connection Pill with Quick View & Sync */}
+            <div
               className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50/90 hover:bg-teal-100/90 border border-teal-200 text-[10px] font-semibold text-teal-800 shadow-2xs transition-colors cursor-pointer"
-              title={`Cloud Database: ${firestoreDbId}. Click to sync SmartCare project files.`}
+              title={`Cloud Database: ${firestoreDbId}. Click to view database explorer.`}
+              onClick={() => onNavigate('architecture-view')}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${firestoreConnected ? 'bg-teal-500 animate-pulse' : 'bg-amber-400'}`}></span>
               <span>Cloud Database Active</span>
-              <span className="text-[9px] bg-teal-200/70 text-teal-900 px-1.5 py-0.5 rounded-md font-mono">Sync</span>
+              <button
+                type="button"
+                id="cloud-db-sync-btn"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await syncProjectDataToFirestore();
+                }}
+                className="text-[9px] bg-teal-200/70 hover:bg-teal-300 text-teal-950 px-1.5 py-0.5 rounded-md font-mono transition-colors cursor-pointer"
+                title="Sync records to database"
+              >
+                Sync
+              </button>
+            </div>
+
+            {/* Universal History Button for Current Section */}
+            <button
+              type="button"
+              id="section-history-header-btn"
+              onClick={() => setHistoryDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200/90 text-slate-700 hover:text-slate-900 border border-slate-200/90 text-xs font-semibold shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 group"
+              title={`View ${title} history`}
+            >
+              <History className="w-3.5 h-3.5 text-teal-600 group-hover:rotate-[-25deg] transition-transform duration-200" />
+              <span>History</span>
             </button>
 
             {/* Notification Bell with Dropdown */}
@@ -636,6 +659,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </div>
       )}
+
+      {/* Interactive Section Audit History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyDrawerOpen}
+        onClose={() => setHistoryDrawerOpen(false)}
+        activeSection={activeNav}
+        sectionTitle={title}
+      />
     </div>
   );
 };

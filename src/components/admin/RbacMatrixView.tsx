@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Check, Minus, Info, Lock, ShieldAlert, Sparkles } from 'lucide-react';
+import { ShieldCheck, Check, Minus, Info, Lock, ShieldAlert, Sparkles, History } from 'lucide-react';
 import { AcademicBadge } from '../common/AcademicBadge';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 interface PermissionRow {
   id: string;
@@ -13,6 +14,7 @@ interface PermissionRow {
 }
 
 export const RbacMatrixView: React.FC = () => {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [matrix, setMatrix] = useState<PermissionRow[]>([
     {
       id: 'p1',
@@ -104,6 +106,15 @@ export const RbacMatrixView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            id="rbac-history-btn"
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl shadow-2xs transition-colors"
+          >
+            <History className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Policy History</span>
+          </button>
           <span className="text-xs font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200/80 font-semibold shadow-2xs">
             Interactive Policy Sandbox
           </span>
@@ -204,6 +215,14 @@ export const RbacMatrixView: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Section History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="rbac-matrix"
+        sectionTitle="Access Control Policy History"
+      />
     </div>
   );
 };

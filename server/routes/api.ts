@@ -70,6 +70,52 @@ apiRouter.post('/auth/register', (req, res) => {
   });
 });
 
+apiRouter.post('/auth/google-session', (req, res) => {
+  const { id, email, name, role, phone } = req.body;
+  const cleanEmail = (typeof email === 'string' ? email : '').trim().toLowerCase();
+  const targetRole = cleanEmail === 'yadasomesh46@gmail.com' ? 'admin' : (role || 'patient');
+
+  let user = cloudDb.getUserById(id) || cloudDb.getUserByEmail(cleanEmail);
+  if (!user) {
+    user = cloudDb.createUser({
+      email: cleanEmail,
+      name: name || 'Authorized User',
+      role: targetRole,
+      phone: phone || '+91 98450 12345',
+      status: 'active',
+    });
+    if (id) {
+      user.id = id;
+      (cloudDb as any).users.set(id, user);
+    }
+  } else {
+    user.role = targetRole;
+    user.status = 'active';
+  }
+
+  if (user.role === 'patient') {
+    cloudDb.ensurePatientRecord(user);
+  } else if (user.role === 'doctor') {
+    cloudDb.ensureDoctorRecord(user);
+  }
+
+  const token = `firebase:${user.id}`;
+  cloudDb.logAction('GOOGLE_LOGIN_SUCCESS', user.email, user.role, `Google session handshake validated for ${user.email}`);
+
+  return res.json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      phone: user.phone,
+      status: user.status,
+    },
+    message: `Welcome, ${user.name}! Access granted as ${user.role.toUpperCase()}`,
+  });
+});
+
 apiRouter.get('/auth/me', (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -305,6 +351,17 @@ apiRouter.get('/admin/audit-logs', requireRole('admin'), (_req, res) => {
 apiRouter.get('/cloud-monitoring', (_req, res) => {
   const status = cloudDb.getCloudStatus();
   return res.json(status);
+});
+
+// ----------------------------------------------------
+// 8. Section History & Audit Timeline
+// ----------------------------------------------------
+apiRouter.get('/history/:section', (req: AuthenticatedRequest, res: Response) => {
+  const section = req.params.section || 'dashboard';
+  const userId = req.user?.id;
+  const role = req.user?.role;
+  const history = cloudDb.getSectionHistory(section, userId, role);
+  return res.json({ section, history });
 });
 
 export default apiRouter;

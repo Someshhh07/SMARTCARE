@@ -10,10 +10,12 @@ import {
   AlertTriangle,
   UserCheck,
   UserX,
+  History,
 } from 'lucide-react';
 import { User } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 export const UserManagementView: React.FC = () => {
   const { showToast } = useAuth();
@@ -23,6 +25,7 @@ export const UserManagementView: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -77,6 +80,16 @@ export const UserManagementView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="user-governance-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all duration-150 cursor-pointer active:scale-95"
+            title="View user account provisioning and access grant history"
+          >
+            <History className="w-4 h-4 text-teal-600" />
+            <span>Governance History</span>
+          </button>
           <span className="text-xs font-mono font-semibold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
             Total Identities: {users.length}
           </span>
@@ -279,6 +292,14 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* User Governance History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="users"
+        sectionTitle="User Account Governance & Privilege Logs"
+      />
     </div>
   );
 };

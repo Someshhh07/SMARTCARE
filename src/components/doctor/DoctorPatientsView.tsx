@@ -10,15 +10,18 @@ import {
   ChevronRight,
   ShieldCheck,
   X,
+  History,
 } from 'lucide-react';
 import { Patient, Appointment, MedicalRecord } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 export const DoctorPatientsView: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientDetail, setPatientDetail] = useState<{
     appointments: Appointment[];
@@ -79,15 +82,28 @@ export const DoctorPatientsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search patient, ID or diagnosis..."
-            className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200/80 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all duration-150"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <button
+            type="button"
+            id="patients-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 shrink-0"
+            title="View patient registration and encounter history"
+          >
+            <History className="w-4 h-4 text-teal-600" />
+            <span>Patient History</span>
+          </button>
+
+          <div className="relative flex-1 sm:w-72">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search patient, ID or diagnosis..."
+              className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200/80 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all duration-150"
+            />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          </div>
         </div>
       </div>
 
@@ -241,6 +257,14 @@ export const DoctorPatientsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Patient History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="patients"
+        sectionTitle="Patients Directory & Clinical Encounters"
+      />
     </div>
   );
 };

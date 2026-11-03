@@ -11,11 +11,13 @@ import {
   Filter,
   FileText,
   AlertCircle,
+  History,
 } from 'lucide-react';
 import { Appointment } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { BookAppointmentModal } from './BookAppointmentModal';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 export const AppointmentsView: React.FC = () => {
   const { user, role, showToast } = useAuth();
@@ -23,6 +25,7 @@ export const AppointmentsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'cancelled'>('upcoming');
   const [searchFilter, setSearchFilter] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
@@ -91,14 +94,27 @@ export const AppointmentsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          id="book-new-appointment-btn"
-          onClick={() => setBookModalOpen(true)}
-          className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all duration-150 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Book Appointment</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="appointments-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all duration-150 cursor-pointer active:scale-95"
+            title="View appointment booking and status history"
+          >
+            <History className="w-4 h-4 text-teal-600" />
+            <span>Appointment History</span>
+          </button>
+
+          <button
+            id="book-new-appointment-btn"
+            onClick={() => setBookModalOpen(true)}
+            className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all duration-150 cursor-pointer active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Book Appointment</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs & Search Filter */}
@@ -341,6 +357,14 @@ export const AppointmentsView: React.FC = () => {
         onSuccess={() => {
           loadAppointments();
         }}
+      />
+
+      {/* Appointment History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="appointments"
+        sectionTitle="Clinical Appointments & Outpatient Agenda"
       />
     </div>
   );

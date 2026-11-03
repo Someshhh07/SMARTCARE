@@ -5,10 +5,12 @@ class ApiService {
   private getHeaders(): HeadersInit {
     const token = localStorage.getItem('smc_token') || '';
     const userId = localStorage.getItem('smc_user_id') || '';
+    const userRole = localStorage.getItem('smc_user_role') || '';
     return {
       'Content-Type': 'application/json',
       Authorization: token ? `Bearer ${token}` : '',
       'x-user-id': userId,
+      'x-user-role': userRole,
     };
   }
 
@@ -22,6 +24,29 @@ class ApiService {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Login failed' }));
       throw new Error(err.error || 'Authentication error');
+    }
+    const data = await res.json();
+    localStorage.setItem('smc_token', data.token);
+    localStorage.setItem('smc_user_id', data.user.id);
+    localStorage.setItem('smc_user_role', data.user.role);
+    return data;
+  }
+
+  async syncGoogleSession(userData: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    phone?: string;
+  }): Promise<{ user: User; token: string }> {
+    const res = await fetch('/api/auth/google-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Google session sync failed' }));
+      throw new Error(err.error || 'Google session sync error');
     }
     const data = await res.json();
     localStorage.setItem('smc_token', data.token);
@@ -247,6 +272,19 @@ class ApiService {
     const res = await fetch('/api/cloud-monitoring');
     if (!res.ok) throw new Error('Failed to fetch cloud infrastructure telemetry');
     return res.json();
+  }
+
+  // Section History
+  async getSectionHistory(section: string): Promise<any[]> {
+    try {
+      const res = await fetch(`/api/history/${section}`, { headers: this.getHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.history || [];
+    } catch (e) {
+      console.warn('Failed to load history for section', section, e);
+      return [];
+    }
   }
 }
 

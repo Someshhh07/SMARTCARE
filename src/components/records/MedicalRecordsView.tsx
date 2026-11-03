@@ -16,11 +16,13 @@ import {
   X,
   Building2,
   ShieldCheck,
+  History,
 } from 'lucide-react';
 import { MedicalRecord, Patient } from '../../types';
 import { api } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { AcademicBadge } from '../common/AcademicBadge';
+import { SectionHistoryDrawer } from '../common/SectionHistoryDrawer';
 
 export const MedicalRecordsView: React.FC = () => {
   const { user, role, showToast } = useAuth();
@@ -29,6 +31,7 @@ export const MedicalRecordsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // New Record modal (for Doctors)
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -130,15 +133,28 @@ export const MedicalRecordsView: React.FC = () => {
           </p>
         </div>
 
-        {role === 'doctor' && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setCreateModalOpen(true)}
-            className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all duration-150 cursor-pointer"
+            type="button"
+            id="medical-records-history-btn"
+            onClick={() => setHistoryOpen(true)}
+            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-2xs transition-all duration-150 cursor-pointer active:scale-95"
+            title="View medical records clinical revision and prescription audit logs"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create Consultation Record</span>
+            <History className="w-4 h-4 text-teal-600" />
+            <span>Record History</span>
           </button>
-        )}
+
+          {role === 'doctor' && (
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="px-4.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all duration-150 cursor-pointer active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Consultation Record</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -533,6 +549,14 @@ export const MedicalRecordsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Record History Drawer */}
+      <SectionHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        activeSection="medical-records"
+        sectionTitle="Medical Records & EHR Vault"
+      />
     </div>
   );
 };

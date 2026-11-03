@@ -107,7 +107,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (fbUser && !user) {
         const email = fbUser.email || 'user@smartcare.cloud';
         const isSomeshAdmin = email === 'yadasomesh46@gmail.com' || email.includes('admin');
-        const role = isSomeshAdmin ? 'admin' : 'patient';
+        const storedRole = (localStorage.getItem('smc_user_role') as 'patient' | 'doctor' | 'admin') || null;
+        let role: 'patient' | 'doctor' | 'admin' = isSomeshAdmin ? 'admin' : (storedRole || 'patient');
+
+        // Check if role was persisted in Firestore
+        try {
+          const existingFsUser = await FirestoreService.getUser(fbUser.uid);
+          if (existingFsUser?.role) {
+            role = isSomeshAdmin ? 'admin' : existingFsUser.role;
+          }
+        } catch (e) {
+          // ignore
+        }
+
         const mappedUser: User = {
           id: fbUser.uid,
           email,
@@ -117,8 +129,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: 'active',
           createdAt: new Date().toISOString(),
         };
+
+        // Sync with backend API session
+        try {
+          await api.syncGoogleSession({
+            id: mappedUser.id,
+            email: mappedUser.email,
+            name: mappedUser.name,
+            role: mappedUser.role,
+            phone: mappedUser.phone,
+          });
+        } catch (e) {
+          localStorage.setItem('smc_token', `firebase:${fbUser.uid}`);
+          localStorage.setItem('smc_user_id', mappedUser.id);
+          localStorage.setItem('smc_user_role', mappedUser.role);
+        }
+
         setUser(mappedUser);
-        await FirestoreService.ensureUserRoleAndProfile(mappedUser);
+        FirestoreService.ensureUserRoleAndProfile(mappedUser).catch(() => {});
       }
     });
     return () => unsubscribe();
@@ -133,7 +161,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const me = await api.getMe();
           if (me) {
             setUser(me);
-            // Ensure Firestore sync
+            // Ensure Firestore sync non-blockingly
             FirestoreService.ensureUserRoleAndProfile(me).catch(() => {});
           }
         }
@@ -171,8 +199,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await api.login(email, role);
       setUser(data.user);
       setActiveView('dashboard');
-      // Store user and ensure role profile in Firestore
-      await FirestoreService.ensureUserRoleAndProfile(data.user);
+      // Store user and ensure role profile in Firestore non-blockingly
+      FirestoreService.ensureUserRoleAndProfile(data.user).catch((fsErr) => {
+        console.warn('Firestore profile sync notice:', fsErr);
+      });
       showToast(`Welcome, ${data.user.name}! Access granted as ${data.user.role.toUpperCase()}`);
     } catch (err) {
       throw err;
@@ -187,7 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const fbUser = await fbSignInWithGoogle();
       const email = fbUser.email || 'user@smartcare.cloud';
       const isSomeshAdmin = email === 'yadasomesh46@gmail.com' || email.includes('admin');
-      
+
       // Check existing role stored in Firestore
       let assignedRole: 'patient' | 'doctor' | 'admin' = isSomeshAdmin ? 'admin' : preferredRole;
       try {
@@ -199,27 +229,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Fall back to assignedRole
       }
 
-      const newUser: User = {
+      // Sync with server backend database session
+      let finalUser: User = {
         id: fbUser.uid,
         email,
-        name: fbUser.displayName || 'Google User',
+        name: fbUser.displayName || 'Authorized Google User',
         role: assignedRole,
         phone: fbUser.phoneNumber || '+91 98450 ' + Math.floor(10000 + Math.random() * 90000),
         status: 'active',
         createdAt: new Date().toISOString(),
       };
 
-      // Set in api service local token
-      localStorage.setItem('smc_token', `firebase:${fbUser.uid}`);
-      localStorage.setItem('smc_user_id', newUser.id);
-      localStorage.setItem('smc_user_role', newUser.role);
+      try {
+        const serverSession = await api.syncGoogleSession({
+          id: finalUser.id,
+          email: finalUser.email,
+          name: finalUser.name,
+          role: finalUser.role,
+          phone: finalUser.phone,
+        });
+        if (serverSession?.user) {
+          finalUser = serverSession.user;
+        }
+      } catch (e) {
+        localStorage.setItem('smc_token', `firebase:${fbUser.uid}`);
+        localStorage.setItem('smc_user_id', finalUser.id);
+        localStorage.setItem('smc_user_role', finalUser.role);
+      }
 
-      setUser(newUser);
+      setUser(finalUser);
       setActiveView('dashboard');
 
-      // Store in Firestore and ensure role profile
-      await FirestoreService.ensureUserRoleAndProfile(newUser);
-      showToast(`Signed in as ${newUser.name} with ${newUser.role.toUpperCase()} access!`);
+      // Store in Firestore and ensure role profile non-blockingly
+      FirestoreService.ensureUserRoleAndProfile(finalUser).catch((fsErr) => {
+        console.warn('Firestore Google user sync notice:', fsErr);
+      });
+      showToast(`Signed in as ${finalUser.name} with ${finalUser.role.toUpperCase()} access!`);
     } catch (err: any) {
       console.error('Google Sign-In error:', err);
       showToast(err?.message || 'Google sign-in cancelled or failed');
@@ -235,8 +280,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await api.register(email, name, role, phone);
       setUser(data.user);
       setActiveView('dashboard');
-      // Store in Firestore
-      await FirestoreService.ensureUserRoleAndProfile(data.user);
+      // Store in Firestore non-blockingly
+      FirestoreService.ensureUserRoleAndProfile(data.user).catch((fsErr) => {
+        console.warn('Firestore register sync notice:', fsErr);
+      });
       showToast(`Account created for ${data.user.name} with ${data.user.role.toUpperCase()} access.`);
     } catch (err) {
       throw err;
